@@ -1,0 +1,28 @@
+flowchart TB
+    subgraph AWS["AWS (ingestion — Python)"]
+        EB["EventBridge<br/>daily cron 06:00 AEST"] --> L["Lambda<br/>fetch · transform · upsert<br/>(hand-written core)"]
+    end
+
+    FC["NSW FuelCheck API<br/>OAuth2 · token ~12h<br/>2,500 calls/mo free"]
+    L -->|"1 call/day"| FC
+    L -->|"idempotent UPSERT"| PG[("PostgreSQL<br/>Neon free tier<br/>stations · price_readings")]
+
+    subgraph VERCEL["Vercel (app — Next.js/TypeScript)"]
+        API["API routes /api/*<br/>contract: API.md"] --> UI["Dashboard<br/>cheapest near me · price history<br/>citywide median · cycle status"]
+    end
+
+    PG -->|"SQL only — never FuelCheck at request time"| API
+
+    subgraph V2["v2 — sketched, not built"]
+        ASK["POST /api/ask — RAG ask-box<br/>router: text-to-query ↔ retrieval"]
+        REDIS["Redis semantic cache"]
+        EVAL["Eval harness"]
+        ASK -.-> REDIS
+        ASK -.-> EVAL
+    end
+
+    UI -.->|"future"| ASK
+
+    style V2 stroke-dasharray: 5 5
+    style FC fill:#e8f4e8
+    style PG fill:#e8eef8
